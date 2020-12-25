@@ -1,0 +1,5 @@
+.idea/
+.temp/
+.ipynb_checkpoints/
+__pycache__/
+data/

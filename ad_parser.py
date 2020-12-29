@@ -126,6 +126,14 @@ class Parser:
                         else:
                             ad_details.to_date = text
 
+        def get_characteristic_with_icon(icon_class):
+            ch_tag = main_content.xpath(".//span[contains(@class, '%s')]" % icon_class)
+            if len(ch_tag) > 0:
+                ch_tag = ch_tag[0].getparent()
+                if ch_tag is not None:
+                    return self.__get_all_tag_content(ch_tag)
+            return None
+
         for t in main_content:
             if t.tag != "div":
                 continue
@@ -135,6 +143,9 @@ class Parser:
             try_read_deposit_and_transfer(t)
             try_read_address(t)
             try_read_from_date(t)
+
+        ad_details.floor = get_characteristic_with_icon("glyphicons-building")
+        ad_details.furniture = get_characteristic_with_icon("glyphicons-bed")
 
         images = []
         for img_tag in main_content.xpath(".//img[@class='sp-image']"):

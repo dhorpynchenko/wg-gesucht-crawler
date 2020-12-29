@@ -23,6 +23,8 @@ class PropertyDetails:
         self.descr = None
         self.type = None
         self.size = None
+        self.floor = None
+        self.furniture = None
 
         self.address = None
 

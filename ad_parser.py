@@ -28,7 +28,7 @@ class Parser:
                 return now - val * 60
             elif val_type == "Stunde" or val_type == "Stunden":
                 return now - val * 60 * 60
-            elif val_type == "Tag" or val_type == "Tagen":
+            elif val_type == "Tag" or val_type == "Tage":
                 return now - val * 60 * 60 * 24
             else:
                 raise Exception("Unknown online type '%s'" % val_type)

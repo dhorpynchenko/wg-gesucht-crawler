@@ -135,7 +135,17 @@ class Parser:
             try_read_deposit_and_transfer(t)
             try_read_address(t)
             try_read_from_date(t)
+
+        images = []
+        for img_tag in main_content.xpath(".//img[@class='sp-image']"):
+            url = img_tag.attrib.get('data-src', None)
+            if url:
+                images.append(url)
+        ad_details.imgs = images
         return ad_details
+
+    def details_page_has_pics(self) -> bool:
+        return len(self.body.xpath(".//div[@id='WG-Pictures']")) > 0
 
     def parse_user_ids(self):
         author_ids = self.body.xpath(".//script[contains(text(), 'window.contactedData =')]")[0].text

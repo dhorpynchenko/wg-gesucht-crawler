@@ -25,6 +25,9 @@ def save_to_file(content, path):
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
 
+def create_if_no_exists(dir_path):
+    if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+        os.mkdir(dir_path)
 
 def main():
     delay = 5
@@ -34,14 +37,19 @@ def main():
         for ad in res_parser.parse_search_results():
 
             dir = './data/' + ad.id
-            if not os.path.exists(dir) or not os.path.isdir(dir):
-                os.mkdir(dir)
+            create_if_no_exists(dir)
 
             print("Reading ad: %s" % ad.url)
             ad_page = api.get_ad_page(ad.url)
+            ad_parser = Parser(url, ad_page)
+            if not ad_parser.details_page_has_pics():
+                time.sleep(delay)
+                print("Parser detected that page had no photos block. Try reload page...")
+                ad_page = api.get_ad_page(ad.url)
+                ad_parser = Parser(url, ad_page)
+
             save_to_file(ad_page, dir + '/ad.html')
 
-            ad_parser = Parser(url, ad_page)
             ad.details = ad_parser.parse_property_details()
             user_ids = ad_parser.parse_user_ids()
             user_data = api.get_user_data(user_ids[0], user_ids[1], user_ids[2])
@@ -50,6 +58,15 @@ def main():
                                user_data['_links']['self']['href'])
             save_to_file(jsonpickle.dumps(ad), dir + '/ad.json')
             print("Saved ad %s" % ad.id)
+
+            pic_dir = dir + '/img'
+            create_if_no_exists(pic_dir)
+            for p_url in ad.details.imgs:
+                content = api.get_image(p_url)
+                img_name = p_url.rsplit('/', 1)[-1]
+                with open(pic_dir + '/' + img_name, "wb") as img_file:
+                    img_file.write(content)
+
             time.sleep(delay)
 
 

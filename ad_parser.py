@@ -1,5 +1,6 @@
 import re
 import time
+from typing import Optional
 
 from lxml import etree
 
@@ -13,7 +14,8 @@ class Parser:
         self.doc = etree.fromstring(html_page, etree.HTMLParser())
         self.body = self.doc.find("body")
 
-    def __get_last_update(self, online):
+    @staticmethod
+    def __get_last_update(online) -> Optional[float]:
         online = online.strip()
         m = re.findall("^Online: ([0-9]+) ([a-zA-Z]+)$", online)
         if m is None or len(m) == 0:
@@ -33,7 +35,8 @@ class Parser:
             else:
                 raise Exception("Unknown online type '%s'" % val_type)
 
-    def __get_all_tag_content(self, node):
+    @staticmethod
+    def __get_all_tag_content(node):
         """
 
         :param node:
@@ -49,7 +52,11 @@ class Parser:
             item_url = self.url + pic[0].attrib["href"]
             item_online = item.xpath(".//span[contains(text(), 'Online:')]")[0].text
             last_update = self.__get_last_update(item_online)
-            yield Ad(item_id, item_url, last_update)
+            ad = Ad(item_id, item_url)
+            # Here we suppose that this ad was just created
+            ad.created = last_update
+            ad.last_update = last_update
+            yield ad
 
     def parse_property_details(self) -> PropertyDetails:
         body = self.doc.find("body")
@@ -157,6 +164,10 @@ class Parser:
 
     def details_page_has_pics(self) -> bool:
         return len(self.body.xpath(".//div[@id='WG-Pictures']")) > 0
+
+    def details_page_is_deactivated_or_not_found(self) -> bool:
+        return len(self.body.xpath(".//div[contains(@class, 'panel-deactivated')]")) > 0 \
+               or len(self.body.xpath(".//div[contains(@class, 'panel-body')]")) == 0
 
     def parse_user_ids(self):
         author_ids = self.body.xpath(".//script[contains(text(), 'window.contactedData =')]")[0].text

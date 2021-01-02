@@ -3,16 +3,18 @@ from datetime import datetime
 
 class Ad:
 
-    def __init__(self, ad_id: str, ad_url, last_update) -> None:
+    def __init__(self, ad_id: str, ad_url) -> None:
         super().__init__()
         self.id = ad_id
         self.url = ad_url
-        self.last_update = last_update
+        self.created = None
+        self.last_update = None
+        self.deactivated = None
         self.details = None
         self.author = None
 
     def __repr__(self):
-        return "%s %s" % (datetime.fromtimestamp(self.last_update), self.url)
+        return "%s %s" % (datetime.fromtimestamp(self.created) if self.created is not None else self.created, self.url)
 
 
 class PropertyDetails:

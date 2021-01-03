@@ -2,6 +2,54 @@ import json
 import requests
 
 
+class CitySearch:
+    categories = {
+        0: "wg-zimmer",
+        1: "1-zimmer-wohnungen",
+        2: "wohnungen",
+        3: "haeuser"
+    }
+
+    def __init__(self, name, city_id) -> None:
+        self.name = name
+        self.id = city_id
+        self.search_params = {
+            # 1 - 1-Room-flats, 0 - Flatshares, 2 - Flats, 3 - Houses
+            "categories[]": [1, 2],
+            "city_id": self.id,
+            "noDeact": 1,
+            # 2 - No swap
+            "exc": 2,
+            "img_only": 1,
+            # 0 - any , 1 - Short term, 2 - Long term, 3 - Overnight stay
+            "rent_types[]": [2]
+        }
+
+    def get_search_url(self, url, page: int):
+        categories_sorted = sorted(self.search_params["categories[]"])
+        categories = "+".join(str(c) for c in categories_sorted)
+        url_suffix = "-und-".join(CitySearch.categories[c] for c in categories_sorted)
+        return (url + "/%s-in-%s.%s.%s.1.%s.html") % (url_suffix, self.name, self.id, categories, page)
+
+
+MUNICH = CitySearch("Munchen", 90)
+BERLIN = CitySearch("Berlin", 8)
+COLOGNE = CitySearch("Koeln", 73)
+DUSSELDORF = CitySearch("Dusseldorf", 30)
+DORTMUND = CitySearch("Dortmund", 26)
+ESSEN = CitySearch("Essen", 35)
+DRESDEN = CitySearch("Dresden", 27)
+NURNBERG = CitySearch("Nurnberg", 96)
+STUTTGART = CitySearch("Stuttgart", 124)
+FRANKFURT = CitySearch("Frankfurt-am-Main", 41)
+HANNOVER = CitySearch("Hannover", 57)
+BREMEN = CitySearch("Bremen", 17)
+HAMBURG = CitySearch("Hamburg", 55)
+
+ALL_CITIES = [MUNICH, BERLIN, COLOGNE, FRANKFURT, HAMBURG, STUTTGART, DRESDEN, HANNOVER, BREMEN, DUSSELDORF,
+              DORTMUND, ESSEN,  NURNBERG]
+
+
 class API:
 
     def __init__(self, url) -> None:
@@ -27,17 +75,14 @@ class API:
         elif target_url is not None and target_url not in response.url:
             raise Exception("Expected url %s but redirected to \n%s" % (target_url, response.url))
 
-    def __get_search_url(self, page: int):
-        return (self.url + "/1-zimmer-wohnungen-in-Munchen.90.1.1.%s.html") % page
-
     def __update_cookies(self, response: requests.Response):
         self.__set_cookie('PHPSESSID', response.cookies.get('PHPSESSID', None))
 
-    def get_ads(self, pages: int, search_params: dict):
+    def get_ads(self, city: CitySearch, pages: int):
         for p in range(pages):
-            p_url = self.__get_search_url(p)
+            p_url = city.get_search_url(self.url, p)
             try:
-                response = requests.get(p_url, params=search_params, headers=self.headers, cookies=self.cookies)
+                response = requests.get(p_url, params=city.search_params, headers=self.headers, cookies=self.cookies)
                 self.__check_throw_response_success(response, p_url)
                 self.__update_cookies(response)
             except Exception as e:

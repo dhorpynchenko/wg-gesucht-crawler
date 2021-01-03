@@ -7,6 +7,7 @@ class Ad:
         super().__init__()
         self.id = ad_id
         self.url = ad_url
+        self.city = None
         self.created = None
         self.last_update = None
         self.deactivated = None

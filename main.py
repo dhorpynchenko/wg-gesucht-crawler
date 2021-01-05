@@ -1,8 +1,9 @@
+from random import shuffle
 from typing import Optional
 
 from ad_parser import Parser
 from model import Author, Ad
-from api import API, ALL_CITIES
+from api import API, ALL_CITIES, RequestFailedException, CitySearch
 import time
 import jsonpickle
 import os
@@ -38,61 +39,69 @@ def read_record(data_file) -> Optional[Ad]:
     return None
 
 
-def main():
-    data_dir = './data/'
-    existing_ads = {a for a in os.listdir(data_dir)}
-    delay = 5
-    delay_cities = 60
-    for city in ALL_CITIES:
-        for results_page in api.get_ads(city, 2):
-            res_parser = Parser(url, results_page)
-            time.sleep(delay)
-            for ad in res_parser.parse_search_results():
+def scan_city(city: CitySearch, data_dir, delay):
 
-                existing_ads.discard(ad.id)
+    for results_page in api.get_ads(city, 2):
+        res_parser = Parser(url, results_page)
+        time.sleep(delay)
+        for ad in res_parser.parse_search_results():
 
-                dir = data_dir + ad.id
-                create_if_no_exists(dir)
+            dir = data_dir + ad.id
+            create_if_no_exists(dir)
 
-                print("Reading ad: %s" % ad.url)
+            print("Reading ad: %s" % ad.url)
+            ad_page = api.get_ad_page(ad.url)
+            ad_parser = Parser(url, ad_page)
+            if not ad_parser.details_page_has_pics():
+                time.sleep(delay)
+                print("Parser detected that page had no photos block. Try reload page...")
                 ad_page = api.get_ad_page(ad.url)
                 ad_parser = Parser(url, ad_page)
-                if not ad_parser.details_page_has_pics():
-                    time.sleep(delay)
-                    print("Parser detected that page had no photos block. Try reload page...")
-                    ad_page = api.get_ad_page(ad.url)
-                    ad_parser = Parser(url, ad_page)
 
-                save_to_file(ad_page, dir + '/ad.html')
-                data_file = dir + '/ad.json'
-                prev_record = read_record(data_file)
+            save_to_file(ad_page, dir + '/ad.html')
+            data_file = dir + '/ad.json'
+            prev_record = read_record(data_file)
 
-                ad.details = ad_parser.parse_property_details()
-                user_ids = ad_parser.parse_user_ids()
-                user_data = api.get_user_data(user_ids[0], user_ids[1], user_ids[2])
-                ad.author = Author(user_ids[0], user_data['public_name'], user_data['mobile'],
-                                   user_data['verified_user'] == '1',
-                                   user_data['_links']['self']['href'])
-                if prev_record is not None:
-                    ad.created = prev_record.created
-                ad.city = city.name
-                save_to_file(to_json(ad), data_file)
-                print("Saved ad %s" % ad.id)
+            ad.details = ad_parser.parse_property_details()
+            user_ids = ad_parser.parse_user_ids()
+            user_data = api.get_user_data(user_ids[0], user_ids[1], user_ids[2])
+            ad.author = Author(user_ids[0], user_data['public_name'], user_data['mobile'],
+                               user_data['verified_user'] == '1',
+                               user_data['_links']['self']['href'])
+            if prev_record is not None:
+                ad.created = prev_record.created
+            ad.city = city.name
+            save_to_file(to_json(ad), data_file)
+            print("Saved ad %s" % ad.id)
 
-                pic_dir = dir + '/img'
-                create_if_no_exists(pic_dir)
-                for p_url in ad.details.imgs:
-                    content = api.get_image(p_url)
-                    img_name = p_url.rsplit('/', 1)[-1]
-                    img_url = pic_dir + '/' + img_name
-                    if os.path.exists(img_url):
-                        continue
-                    with open(img_url, "wb") as img_file:
-                        img_file.write(content)
+            pic_dir = dir + '/img'
+            create_if_no_exists(pic_dir)
+            for p_url in ad.details.imgs:
+                content = api.get_image(p_url)
+                img_name = p_url.rsplit('/', 1)[-1]
+                img_url = pic_dir + '/' + img_name
+                if os.path.exists(img_url):
+                    continue
+                with open(img_url, "wb") as img_file:
+                    img_file.write(content)
 
-                time.sleep(delay)
-        time.sleep(delay_cities)
-    print("Outdated %s ads" % len(existing_ads))
+            time.sleep(delay)
+
+
+def main():
+    data_dir = './data/'
+    delay = 10
+    delay_captcha = 60 * 60
+
+    while True:
+        cities = [c for c in ALL_CITIES]
+        shuffle(cities)
+        for city in cities:
+            try:
+                scan_city(city, data_dir, delay)
+            except RequestFailedException as e:
+                print("Failure during request. Delay for %s sec. Error %s" % (delay_captcha, e))
+                time.sleep(delay_captcha)
 
     # Check old ads that weren't found in the search output and check if they are deactivated
     # for old in existing_ads:

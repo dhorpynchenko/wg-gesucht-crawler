@@ -50,6 +50,10 @@ ALL_CITIES = [MUNICH, BERLIN, COLOGNE, FRANKFURT, HAMBURG, STUTTGART, DRESDEN, H
               DORTMUND, ESSEN,  NURNBERG]
 
 
+class RequestFailedException(Exception):
+    pass
+
+
 class API:
 
     def __init__(self, url) -> None:
@@ -86,7 +90,7 @@ class API:
                 self.__check_throw_response_success(response, p_url)
                 self.__update_cookies(response)
             except Exception as e:
-                raise Exception("Failed to get search results: %s" % e)
+                raise RequestFailedException("Failed to get search results: %s" % e)
             yield response.content.decode("utf-8")
 
     def get_ad_page(self, url):
@@ -95,7 +99,7 @@ class API:
             self.__check_throw_response_success(ad_page, url)
             self.__update_cookies(ad_page)
         except Exception as e:
-            raise Exception("Failed to get ad page: %s" % e)
+            raise RequestFailedException("Failed to get ad page: %s" % e)
         return ad_page.content.decode("utf-8")
 
     def get_user_data(self, user_id, asset_id, asset_type) -> dict:
@@ -106,7 +110,7 @@ class API:
             self.__check_throw_response_success(user_data_resp, url)
             self.__update_cookies(user_data_resp)
         except Exception as e:
-            raise Exception("Failed to get user details: %s" % e)
+            raise RequestFailedException("Failed to get user details: %s" % e)
         return json.loads(user_data_resp.content.decode("utf-8"))
 
     def get_image(self, url):
@@ -114,5 +118,5 @@ class API:
             response = requests.get(url, cookies=self.cookies)
             self.__check_throw_response_success(response)
         except Exception as e:
-            raise Exception("Failed to get image: %s" % e)
+            raise RequestFailedException("Failed to get image: %s" % e)
         return response.content

@@ -1,5 +1,6 @@
 import re
 import time
+from datetime import datetime
 from typing import Optional
 
 from lxml import etree
@@ -17,6 +18,9 @@ class Parser:
     @staticmethod
     def __get_last_update(online) -> Optional[float]:
         online = online.strip()
+        m = re.match("^Online: (([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{2,4}))$", online)
+        if m is not None:
+            return datetime.strptime(m.group(1), "%d.%m.%Y").timestamp()
         m = re.findall("^Online: ([0-9]+) ([a-zA-Z]+)$", online)
         if m is None or len(m) == 0:
             return None
@@ -52,6 +56,7 @@ class Parser:
             item_url = self.url + pic[0].attrib["href"]
             item_online = item.xpath(".//span[contains(text(), 'Online:')]")[0].text
             last_update = self.__get_last_update(item_online)
+            assert last_update is not None , "Cant parse timestamp '%s'" % item_online
             ad = Ad(item_id, item_url)
             # Here we suppose that this ad was just created
             ad.created = last_update

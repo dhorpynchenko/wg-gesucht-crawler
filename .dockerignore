@@ -3,3 +3,5 @@ data/
 .temp/
 .git/
 .gitignore
+.idea/
+__pycache__

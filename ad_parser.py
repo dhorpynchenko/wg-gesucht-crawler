@@ -51,8 +51,11 @@ class Parser:
     def parse_search_results(self):
         results = self.body.xpath(".//div[contains(@class, 'offer_list_item')]")
         for item in results:
+            print(etree.tostring(item))
             item_id = item.attrib["data-id"]
             pic = item.xpath(".//a[contains(@href, '" + item_id + "')]")
+            if len(pic) == 0:
+                continue
             item_url = self.url + pic[0].attrib["href"]
             item_online = item.xpath(".//span[contains(text(), 'Online:')]")[0].text
             last_update = self.__get_last_update(item_online)

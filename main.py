@@ -1,7 +1,7 @@
 from random import shuffle
 from typing import Optional
 
-from ad_parser import Parser
+from ad_parser import AdParser, SearchResultsParser
 from model import Author, Ad
 from api import API, ALL_CITIES, RequestFailedException, CitySearch
 import time
@@ -42,7 +42,7 @@ def read_record(data_file) -> Optional[Ad]:
 def scan_city(city: CitySearch, data_dir, delay):
 
     for results_page in api.get_ads(city, 2):
-        res_parser = Parser(url, results_page)
+        res_parser = SearchResultsParser(url, results_page)
         time.sleep(delay)
         for ad in res_parser.parse_search_results():
 
@@ -51,12 +51,16 @@ def scan_city(city: CitySearch, data_dir, delay):
 
             print("Reading ad: %s" % ad.url)
             ad_page = api.get_ad_page(ad.url)
-            ad_parser = Parser(url, ad_page)
+            ad_parser = AdParser(url, ad_page)
+            if not ad_parser.is_ad_page():
+                print("Not an ad page, skip")
+                time.sleep(delay)
+                continue
             if not ad_parser.details_page_has_pics():
                 time.sleep(delay)
                 print("Parser detected that page had no photos block. Try reload page...")
                 ad_page = api.get_ad_page(ad.url)
-                ad_parser = Parser(url, ad_page)
+                ad_parser = AdParser(url, ad_page)
 
             save_to_file(ad_page, dir + '/ad.html')
             data_file = dir + '/ad.json'

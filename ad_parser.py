@@ -8,12 +8,18 @@ from lxml import etree
 from model import PropertyDetails, Ad
 
 
-class Parser:
+class AbsParser:
 
     def __init__(self, url: str, html_page) -> None:
         self.url = url
         self.doc = etree.fromstring(html_page, etree.HTMLParser())
         self.body = self.doc.find("body")
+
+
+class SearchResultsParser(AbsParser):
+
+    def __init__(self, url: str, html_page) -> None:
+        super().__init__(url, html_page)
 
     @staticmethod
     def __get_last_update(online) -> Optional[float]:
@@ -39,15 +45,6 @@ class Parser:
             else:
                 raise Exception("Unknown online type '%s'" % val_type)
 
-    @staticmethod
-    def __get_all_tag_content(node):
-        """
-
-        :param node:
-        :return:
-        """
-        return ' '.join([it.strip() for it in node.itertext()]).strip()
-
     def parse_search_results(self):
         results = self.body.xpath(".//div[contains(@class, 'offer_list_item')]")
         for item in results:
@@ -59,12 +56,27 @@ class Parser:
             item_url = self.url + pic[0].attrib["href"]
             item_online = item.xpath(".//span[contains(text(), 'Online:')]")[0].text
             last_update = self.__get_last_update(item_online)
-            assert last_update is not None , "Cant parse timestamp '%s'" % item_online
+            assert last_update is not None, "Cant parse timestamp '%s'" % item_online
             ad = Ad(item_id, item_url)
             # Here we suppose that this ad was just created
             ad.created = last_update
             ad.last_update = last_update
             yield ad
+
+
+class AdParser(AbsParser):
+
+    def __init__(self, url: str, html_page) -> None:
+        super().__init__(url, html_page)
+
+    @staticmethod
+    def __get_all_tag_content(node):
+        """
+
+        :param node:
+        :return:
+        """
+        return ' '.join([it.strip() for it in node.itertext()]).strip()
 
     def parse_property_details(self) -> PropertyDetails:
         body = self.doc.find("body")
@@ -183,3 +195,7 @@ class Parser:
         asset_id = re.findall("asset_id: \"([0-9]+)\"", author_ids)[0]
         asset_type = re.findall("asset_type: \"([0-9]+)\"", author_ids)[0]
         return user_id, asset_id, asset_type
+
+    def is_ad_page(self) -> bool:
+        page_title = self.body.xpath(".//*[contains(@class, 'headline-detailed-view-title')]")
+        return len(page_title) > 0
